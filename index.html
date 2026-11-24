@@ -52,6 +52,9 @@ label{color:var(--muted);display:flex;align-items:center;gap:6px}
 .bk{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--line);background:var(--card);border-radius:10px;margin-bottom:6px}
 .bk .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bk .pc{color:var(--muted);white-space:nowrap}
+#chips{display:flex;gap:6px;flex-wrap:wrap}
+#spd button{padding:6px 11px}
+#chips button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -84,9 +87,10 @@ label{color:var(--muted);display:flex;align-items:center;gap:6px}
   </div>
   <div class="row">
     <select id="voice" title="Voz"></select>
-    <label>Velocidade <input id="rate" type="range" min="0.6" max="2" step="0.1" value="1" style="min-width:90px;flex:none;width:100px"><span id="rv">1,0×</span></label>
+    <input id="rate" type="hidden" value="1">
     <label><input id="all" type="checkbox"> todas as vozes</label>
   </div>
+  <div class="row" id="spd"><span style="color:var(--muted)">Velocidade</span><button id="sm" title="Mais devagar">−</button><span id="rv" style="min-width:58px;text-align:center;font-weight:600">1×</span><button id="sp" title="Mais rápido">+</button><span id="chips"></span></div>
   <div id="note"></div>
 </div></div>
 
@@ -135,11 +139,25 @@ label{color:var(--muted);display:flex;align-items:center;gap:6px}
   if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=fillVoices;
   $("all").onchange=fillVoices;
   $("voice").onchange=function(){store("voice",$("voice").value);noVoice=false;errs=0;wordPos=0;pausedPiper=-1;if(playing)speak(0)};
-  var r0=load("rate");if(r0)$("rate").value=r0;
-  function showRate(){try{audioEl.playbackRate=Number($("rate").value)}catch(e){}$("rv").textContent=Number($("rate").value).toFixed(1).replace(".",",")+"×"}
-  showRate();
-  $("rate").oninput=showRate;
-  $("rate").onchange=function(){store("rate",$("rate").value);restart()};
+  var r0=parseFloat(load("rate"));$("rate").value=(r0>=0.5&&r0<=2.5)?r0:1;
+  var rt;
+  function fmt(v){return String(v).replace(".",",")}
+  function setRate(v,apply){
+    v=Math.round(Math.max(0.5,Math.min(2.5,v))*20)/20;
+    $("rate").value=v;
+    try{audioEl.playbackRate=v}catch(e){}
+    $("rv").textContent=fmt(v)+"×";
+    [].forEach.call(document.querySelectorAll("#chips button"),function(b){b.classList.toggle("on",Math.abs(+b.dataset.v-v)<0.001)});
+    store("rate",v);
+    if(apply){clearTimeout(rt);rt=setTimeout(restart,350)}
+  }
+  [0.75,1,1.25,1.5,1.75,2].forEach(function(v){
+    var b=document.createElement("button");b.textContent=fmt(v);b.dataset.v=v;
+    b.onclick=function(){setRate(v,true)};$("chips").appendChild(b);
+  });
+  $("sm").onclick=function(){setRate(+$("rate").value-0.05,true)};
+  $("sp").onclick=function(){setRate(+$("rate").value+0.05,true)};
+  setRate(+$("rate").value,false);
 
   /* ---------- PDF ---------- */
   var drop=$("drop"),file=$("file");
